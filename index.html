@@ -16,20 +16,15 @@
         <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
         <div class="menu-list">
             <ul id="menu-content" class="menu-content collapse out">
-                <li data-toggle="collapse" data-target="#cities" class="collapsed active">
+                <li data-toggle="collapse" data-target="#cities" id="cities-container" class="collapsed">
                     <a href="#">
                         <i class="fa fa-globe fa-lg"></i>
                         Pick a City
                         <span class="arrow"></span>
                     </a>
                 </li>
-                <ul class="sub-menu collapse" id="cities">
-                    <li class="active"><a href="#">Rome</a></li>
-                    <li><a href="#">Paris</a></li>
-                    <li><a href="#">London</a></li>
-                    <li><a href="#">Dublin</a></li>
-                    <li><a href="#">Madrid</a></li>
-                    <li><a href="#">Berlim</a></li>
+                <ul class="sub-menu collapse" id="cities" data-bind="foreach: cities" >
+                    <li data-bind="click: $parent.selectCity, css: { active: id === $parent.currentCity().id }"><a data-bind="text: name, attr: { id: id }"></a></li>
                 </ul>
 
                 <li data-toggle="collapse" data-target="#locations" class="collapsed">
@@ -38,22 +33,20 @@
 
                 <ul class="sub-menu collapse" id="locations">
                     <li class="no-indicator">
-                        <form>
+                        <form data-bind="submit: filterRestaurants">
                             <div class="input-group add-on">
                                 <input type="text" class="form-control" id="search" placeholder="Filtrar eventos">
                                 <div class="input-group-btn">
-                                    <button data-bind="click: filterShows, clickBubble: false" type="button" class="btn btn-default">
+                                    <button type="submit" class="btn btn-default">
                                         <i class="glyphicon glyphicon-search"></i>
                                     </button>
                                 </div>
                             </div>
                         </form>
                     </li>
-                    <li>Restaurant 1</li>
-                    <li>Restaurant 2</li>
-                    <li>Restaurant 3</li>
-                    <li>Restaurant 4</li>
-                    <li>Restaurant 5</li>
+                    <!-- ko foreach: currentCity().restaurants -->
+                    <li data-bind="visible: showing, click: $parent.toggleRestaurant, css: { active: toggled }"><a data-bind="text: name, attr: { id: id }"></a></li>
+                    <!-- /ko -->
                 </ul>
             </ul>
         </div>
