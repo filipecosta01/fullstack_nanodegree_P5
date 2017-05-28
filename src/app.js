@@ -1,6 +1,5 @@
 import $ from 'jquery';
 import _ from 'lodash';
-import moment from 'moment';
 import ko from 'knockout';
 
 import Yelp from 'node-yelp-api-v3';
@@ -11,8 +10,6 @@ import 'bootstrap/dist/js/bootstrap.js';
 
 import '../styles/main.css';
 
-import swal from 'sweetalert/dist/sweetalert.min.js';
-import 'sweetalert/dist/sweetalert.css';
 
 import 'font-awesome/css/font-awesome.min.css';
 
