@@ -3,9 +3,12 @@ import _ from 'lodash';
 import moment from 'moment';
 import ko from 'knockout';
 
+import Yelp from 'node-yelp-api-v3';
+
 import 'bootstrap';
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap/dist/js/bootstrap.js';
+
 import '../styles/main.css';
 
 import swal from 'sweetalert/dist/sweetalert.min.js';
@@ -14,7 +17,10 @@ import 'sweetalert/dist/sweetalert.css';
 import 'font-awesome/css/font-awesome.min.css';
 
 var map, geocoder, viewModel, infoWindow, largeInfoWindow;
-var pinPoints = [];
+var pinPoints, pinPointsPhotos = [];
+// Valid for 185 days, more than enough for the project.
+
+var yelp;
 
 // Models initialization ( hardcoded data )
 
@@ -360,7 +366,7 @@ var CityViewModel = function( data, map ) {
     self.currentCity = ko.observable( self.cities()[ 0 ] );
 
     self.currentRestaurants = ko.observableArray(
-        _.chain(self.currentCity().restaurants())
+        _.chain( self.currentCity().restaurants() )
         .map( restaurant => {
             restaurant.toggled( true );
             restaurant.showing( true );
@@ -370,28 +376,31 @@ var CityViewModel = function( data, map ) {
     );
 
     self.filterRestaurants = function() {
-        const query = $( '#search' ).val();
+        const query = $( '#filter' ).val();
         self.currentRestaurants(
             _.chain( self.currentCity().restaurants() )
             .map( restaurant => {
+                var toggled = false;
                 if ( restaurant.name.toLowerCase().indexOf( query.toLowerCase() ) > -1 ) {
                     restaurant.toggled( true );
                     restaurant.showing( true );
+                    toggled = true;
                 } else {
                     restaurant.toggled( false );
                     restaurant.showing( false );
                 }
-                return restaurant
+                return restaurant;
             } )
             .filter( restaurant => restaurant.name.toLowerCase().indexOf( query.toLowerCase() ) > -1 )
             .value()
         );
+        showPinPoints();
     }
 
     self.selectCity = function(city) {
         self.currentCity( city );
         self.currentRestaurants(
-            _.chain(city.restaurants())
+            _.chain( city.restaurants() )
             .map( restaurant => {
                 restaurant.toggled( true );
                 restaurant.showing( true );
@@ -399,14 +408,23 @@ var CityViewModel = function( data, map ) {
             } )
             .value()
         );
+        resetFilter();
         showPinPoints();
     }
 
     self.toggleRestaurant = function( restaurant ) {
-        if (restaurant.toggled()) {
+        var toggled = false;
+        if ( restaurant.toggled() ) {
             restaurant.toggled( false );
         } else {
             restaurant.toggled( true );
+            toggled = true;
+        }
+
+        setPinPointVisibility( restaurant.id, toggled );
+
+        if ( toggled ) {
+            animateToggledPinPoint( restaurant.id );
         }
     }
 };
@@ -431,6 +449,11 @@ function main() {
     ko.applyBindings( new CityViewModel( CITIES_LOCATIONS_DATA, map ) );
     viewModel = ko.dataFor(document.body);
     showPinPoints();
+
+    yelp = new Yelp( {
+        consumer_key: 'CIz-tW_cOfKadJMveua1vw',
+        consumer_secret: 'urj1sBZtRqy0mITbuIOPUtQhED0FdSFDu5QaxAeQSr7dwjE2SHSHb9CuJt8cJK3n'
+    });
 }
 
 $( () => {
@@ -442,7 +465,7 @@ $( () => {
 } );
 
 function showPinPoints() {
-    pinPoints = [];
+    clearPinPoints();
     _.each( viewModel.currentRestaurants(), restaurant => {
         var pinPoint = new google.maps.Marker( {
             position: restaurant.location,
@@ -453,20 +476,64 @@ function showPinPoints() {
 
         pinPoints.push(pinPoint);
         pinPoint.addListener( 'click', function() {
-            populateInfoWindow( this, infoWindow );
+            populateInfoWindowWithLoader( this, infoWindow );
             map.panTo(pinPoint.getPosition());
             toggleBounce(this);
+            showPhotosForPinPoint( pinPoint )
         } );
 
     } );
     centralizeViewMap();
 }
 
-function populateInfoWindow(pinPoint, infoWindow) {
-    if (infoWindow.marker != pinPoint) {
+function resetFilter() {
+    $( '#filter' ).val( '' );
+}
+
+function clearPinPoints() {
+    _.each(pinPoints, (pinPoint) => {
+        pinPoint.setMap(null);
+    });
+    pinPoints = [];
+}
+
+function animateToggledPinPoint( id ) {
+    _.chain(pinPoints)
+    .filter(( pinPoint ) => pinPoint.id === id)
+    .each( ( pinPoint ) => {
+        new google.maps.event.trigger( pinPoint, 'click' );
+    } )
+    .value();
+}
+
+function setPinPointVisibility( id, visible ) {
+    _.chain(pinPoints)
+    .filter(( pinPoint ) => pinPoint.id === id)
+    .each( ( pinPoint ) => {
+        pinPoint.setMap( visible ? map : null )
+    } )
+    .value();
+}
+
+function populateInfoWindowWithLoader( pinPoint, infoWindow ) {
+    if ( infoWindow.marker != pinPoint ) {
+        infoWindow.marker = pinPoint;
+        infoWindow.setContent("<div class='loader'></div");
+        infoWindow.open(map, pinPoint);
+
+        infoWindow.addListener( 'closeclick', function() {
+            infoWindow.close();
+        });
+    } else {
+        infoWindow.open( map, pinPoint )
+    }
+}
+
+function populateInfoWindow(pinPoint, infoWindow, pictures) {
+    if ( infoWindow.marker != pinPoint ) {
         infoWindow.marker = pinPoint;
         infoWindow.setContent("<div>" + pinPoint.position + "</div");
-        infoWindow.open(map, pinPoint);
+        infoWindow.open( map, pinPoint );
 
         infoWindow.addListener( 'closeclick', function() {
             infoWindow.close();
@@ -475,6 +542,9 @@ function populateInfoWindow(pinPoint, infoWindow) {
 }
 
 function centralizeViewMap() {
+    if ( !pinPoints.length ) {
+        return;
+    }
     var bounds = new google.maps.LatLngBounds();
     _.each( pinPoints, pinPoint => {
         pinPoint.setMap( map );
@@ -490,9 +560,17 @@ function toggleSideBarSelection( el ) {
         el.removeClass( 'active' );
     }
 }
+
 function toggleBounce( pinPoint ) {
     pinPoint.setAnimation( google.maps.Animation.BOUNCE );
     _.delay( function removeAnimation() {
         pinPoint.setAnimation( null );
     }, 740 );
+}
+
+function showPhotosForPinPoint( pinPoint ) {
+    yelp.searchBusiness( {
+        latitude: pinPoint.position.lat(),
+        longitude: pinPoint.position.lng()
+    } ).then( ( results ) => console.log(results)) 
 }
