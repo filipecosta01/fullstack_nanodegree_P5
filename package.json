@@ -6,7 +6,8 @@
   "author": "Filipe Costa",
   "license": "Apache 2.0",
   "scripts": {
-    "dev": "yarn webpack | yarn webpack-dev-server"
+    "dev": "yarn webpack | yarn webpack-dev-server",
+    "start": "yarn webpack | yarn webpack-dev-server"
   },
   "dependencies": {
     "babel-cli": "^6.24.1",
