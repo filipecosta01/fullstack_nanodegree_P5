@@ -54,4 +54,3 @@ For the main design inspiration, please check [Skelly Nav Side Fixed With Bootst
 
 ## [Contacting the Author](mailto:s.costa.filipe@gmail.com)
 Click above and feel free to get in touch in case of trouble or suggestions.
-===================
