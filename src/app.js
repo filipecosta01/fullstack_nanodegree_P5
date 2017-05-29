@@ -389,12 +389,12 @@ var CityViewModel = function( data, map ) {
         .map( restaurant => {
             restaurant.toggled( false );
             restaurant.showing( true );
-            return restaurant
+            return restaurant;
         } )
         .value()
     );
 
-    self.filterQuery = ko.observable("");
+    self.filterQuery = ko.observable('');
 
     // Filter the restaurant's list and pinpoints in the map
     self.filterRestaurants = function() {
@@ -463,7 +463,7 @@ function onMapError() {
 
 // Javascript functions
 function initMap() {
-    map = new google.maps.Map(document.getElementById('map'),
+    map = new google.maps.Map( document.getElementById( 'map' ),
         {
             center: {lat: 40.74135, lng: -73.99802},
             zoom: 14
@@ -525,11 +525,6 @@ function filterPinPoints() {
     .value()
 
     infoWindow.close();
-}
-
-// Reset the filter to empty
-function resetFilter() {
-    $( '#filter' ).val( '' );
 }
 
 // Set the pinpoint map to null and clear the list of pinpoints
