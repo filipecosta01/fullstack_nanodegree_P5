@@ -387,38 +387,36 @@ var CityViewModel = function( data, map ) {
     self.currentRestaurants = ko.observableArray(
         _.chain( self.currentCity().restaurants() )
         .map( restaurant => {
-            restaurant.toggled( true );
+            restaurant.toggled( false );
             restaurant.showing( true );
             return restaurant
         } )
         .value()
     );
 
+    self.filterQuery = ko.observable("");
+
     // Filter the restaurant's list and pinpoints in the map
     self.filterRestaurants = function() {
-        // Get the value of the current filter in the input
-        const query = $( '#filter' ).val();
-
         self.currentRestaurants(
             // chain -> value to chain operations for the same data
             _.chain( self.currentCity().restaurants() )
             .map( restaurant => {
-                var toggled = false;
                 // Check if the restaurant name matches the filter, and set them to visible and toggled
-                if ( restaurant.name.toLowerCase().indexOf( query.toLowerCase() ) > -1 ) {
+                if ( restaurant.name.toLowerCase().indexOf( self.filterQuery().toLowerCase() ) > -1 ) {
                     restaurant.toggled( true );
                     restaurant.showing( true );
-                    toggled = true;
                 } else {
                     restaurant.toggled( false );
                     restaurant.showing( false );
                 }
                 return restaurant;
             } )
-            .filter( restaurant => restaurant.name.toLowerCase().indexOf( query.toLowerCase() ) > -1 )
+            .filter( restaurant => restaurant.name.toLowerCase().indexOf( self.filterQuery().toLowerCase() ) > -1 )
             .value()
         );
-        showPinPoints();
+        filterPinPoints();
+        centralizeViewMap();
     }
 
     // For each city displayed in the view to be selected when clicked
@@ -427,13 +425,13 @@ var CityViewModel = function( data, map ) {
         self.currentRestaurants(
             _.chain( city.restaurants() )
             .map( restaurant => {
-                restaurant.toggled( true );
+                restaurant.toggled( false );
                 restaurant.showing( true );
                 return restaurant;
             } )
             .value()
         );
-        resetFilter();
+        self.filterQuery("");
         showPinPoints();
     }
 
@@ -447,16 +445,21 @@ var CityViewModel = function( data, map ) {
             toggled = true;
         }
 
-        // According to the current state of the restaurant, set the visibility of the pinpoint in the map
-        setPinPointVisibility( restaurant.id, toggled );
-
         if ( toggled ) {
             animateToggledPinPoint( restaurant.id );
+        } else {
+            infoWindow.close();
         }
     }
 };
 
 window.initMap = initMap;
+window.onMapError = onMapError;
+
+function onMapError() {
+    $( '#map' ).addClass( 'hidden' );
+    $( '#error' ).removeClass( 'hidden' );
+}
 
 // Javascript functions
 function initMap() {
@@ -504,14 +507,24 @@ function showPinPoints() {
         pinPoint.addListener( 'click', function() {
             populateInfoWindowWithLoader( this, infoWindow );
             // Set the visibility of the map to center to this pinpoint
-            map.panTo(pinPoint.getPosition());
+            map.panTo( pinPoint.getPosition() );
             // Animate the selected pinpoint
-            toggleBounce(this);
+            toggleBounce( this );
             getInfoForPinPoint( restaurant, pinPoint )
         } );
 
     } );
     centralizeViewMap();
+}
+
+function filterPinPoints() {
+    _.chain( pinPoints )
+    .each( pinPoint => pinPoint.setVisible( false ) )
+    .filter( pinPoint => _.includes(_.map(viewModel.currentRestaurants(), restaurant => restaurant.id),  pinPoint.id) )
+    .each( pinPoint => pinPoint.setVisible( true ) )
+    .value()
+
+    infoWindow.close();
 }
 
 // Reset the filter to empty
@@ -529,8 +542,8 @@ function clearPinPoints() {
 
 // Calls the action to animate the pinpoint when the restaurant is selected in the View
 function animateToggledPinPoint( id ) {
-    _.chain(pinPoints)
-    .filter(( pinPoint ) => pinPoint.id === id)
+    _.chain( pinPoints )
+    .filter( ( pinPoint ) => pinPoint.id === id)
     .each( ( pinPoint ) => {
         new google.maps.event.trigger( pinPoint, 'click' );
     } )
@@ -539,8 +552,8 @@ function animateToggledPinPoint( id ) {
 
 // Set the pinpoint visibility (hidden or showing)
 function setPinPointVisibility( id, visible ) {
-    _.chain(pinPoints)
-    .filter(( pinPoint ) => pinPoint.id === id)
+    _.chain( pinPoints )
+    .filter( ( pinPoint ) => pinPoint.id === id)
     .each( ( pinPoint ) => {
         pinPoint.setMap( visible ? map : null )
     } )
@@ -593,13 +606,16 @@ function populateInfoWindow( pinPoint, infoWindow, info ) {
 
 // Centralize the current view according to the pinpoints in the map
 function centralizeViewMap() {
-    if ( !pinPoints.length ) {
+    const visiblePinPoints = _.filter( pinPoints, ( pinPoint ) => pinPoint.visible );
+    if ( !pinPoints.length || !visiblePinPoints.length ) {
         return;
     }
     var bounds = new google.maps.LatLngBounds();
     _.each( pinPoints, pinPoint => {
-        pinPoint.setMap( map );
-        bounds.extend( pinPoint.position )
+        if ( pinPoint.visible ) {
+            pinPoint.setMap( map );
+            bounds.extend( pinPoint.position )
+        }
     } );
     map.fitBounds( bounds );
 }
@@ -618,7 +634,7 @@ function toggleBounce( pinPoint ) {
     pinPoint.setAnimation( google.maps.Animation.BOUNCE );
     _.delay( function removeAnimation() {
         pinPoint.setAnimation( null );
-    }, 740 );
+    }, 700 );
 }
 
 // Get information asyncronously from Foursquare about the pinpoint selected
