@@ -431,7 +431,7 @@ var CityViewModel = function( data, map ) {
             } )
             .value()
         );
-        self.filterQuery("");
+        self.filterQuery('');
         showPinPoints();
     }
 
