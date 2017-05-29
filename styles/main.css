@@ -140,10 +140,23 @@ label {
   transition: all 1s ease;
 }
 
+.foursquare-logo {
+  color: #E91E63;
+}
+
 .add-on .form-control:focus {
  box-shadow:none;
  -webkit-box-shadow:none; 
  border-color:#cccccc; 
+}
+
+#about-and-info li a {
+  color: white;
+}
+
+#about-and-info li a:hover {
+  color: lightblue;
+  text-decoration: underline;
 }
 
 @media (max-width: 767px) {
@@ -193,6 +206,26 @@ label {
   .map-container {
       height: 97vh;
   }
+}
+
+.restaurant-name {
+  color: #303F9F;
+}
+
+.checkins-count-huge, .tip-count-huge, .users-count-huge {
+  color: #009688;
+}
+
+.checkins-count-medium, .tip-count-medium, .users-count-medium {
+  color: #CDDC39;
+}
+
+.checkins-count-small, .tip-count-small, .users-count-small {
+  color: #FF5722;
+}
+
+.no-info {
+  color: red;
 }
 
 .loader {

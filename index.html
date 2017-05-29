@@ -30,7 +30,6 @@
                 <li data-toggle="collapse" data-target="#locations" class="collapsed">
                     <a href="#"><i class="fa fa-map-marker fa-lg"></i> Filter Restaurants <span class="arrow"></span></a>
                 </li>
-
                 <ul class="sub-menu collapse" id="locations">
                     <li class="no-indicator">
                         <form data-bind="submit: filterRestaurants">
@@ -47,6 +46,15 @@
                     <!-- ko foreach: currentCity().restaurants -->
                     <li data-bind="visible: showing, click: $parent.toggleRestaurant, css: { active: toggled }"><a data-bind="text: name, attr: { id: id }"></a></li>
                     <!-- /ko -->
+                </ul>
+                <li data-toggle="collapse" data-target="#about-and-info" class="collapsed">
+                    <a href="#"><i class="fa fa-info-circle fa-lg"></i> About  <span class="arrow"></span></a>
+                </li>
+                <ul class="sub-menu collapse text-center" id="about-and-info">
+                    <li class="no-indicator">Author: Filipe Costa</li>
+                    <li class="no-indicator">Contact: s.costa.filipe@gmail.com</li>
+                    <li class="no-indicator">Google API: <a target='_blank' href='https://developers.google.com/maps/'>Maps</a></li>
+                    <li class="no-indicator">Marker Info: <a target='_blank' href='https://developer.foursquare.com/'>Foursquare</a></li>
                 </ul>
             </ul>
         </div>

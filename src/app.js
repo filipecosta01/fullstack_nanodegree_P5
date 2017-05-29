@@ -1,8 +1,20 @@
+/*
+ * This project is part of the Full Stack Nano Degree Course from Udacity.
+ * As part of the project, is required to load a map and show some locations on it,
+ * implement features like list locations, include markers in the map and open info windows
+ * with some representative information about the place.
+ *
+ * For this specific project, the implementation is: Show a list of cities in Europe and
+ * for each city, list the best 5 restaurants according to a previous search on Yelp (best rated).
+ * Then, with some hardcoded data, display the cities chosen and the best 5 restaurants, display in
+ * the map their location and some information about how many people were there before and how many
+ * people evaluated that restaurant (for populatiry).
+ *
+ * @author: Filipe Costa (s.costa.filipe@gmail.com)
+ */
 import $ from 'jquery';
 import _ from 'lodash';
 import ko from 'knockout';
-
-import Yelp from 'node-yelp-api-v3';
 
 import 'bootstrap';
 import 'bootstrap/dist/css/bootstrap.css';
@@ -10,17 +22,21 @@ import 'bootstrap/dist/js/bootstrap.js';
 
 import '../styles/main.css';
 
-
 import 'font-awesome/css/font-awesome.min.css';
 
+// Definitions for some of the variables used in the code below.
 var map, geocoder, viewModel, infoWindow, largeInfoWindow;
-var pinPoints, pinPointsPhotos = [];
-// Valid for 185 days, more than enough for the project.
+// For the markers in the map, currently showing
+var pinPoints = [];
+// For caching information about the restaurant, just to avoid doing request every time
+var pinPointsInfo = [];
 
-var yelp;
+const FOURSQUARE_CLIENT_ID = 'IOPRJUMVZOTR1VL5XGLTELYHIUFDWJP4R0VCWSXAP2GD4SPS';
+const FOURSQUARE_CLIENT_SECRET = 'XXG3ZOCJCDNJTBDLKJ4W1ASCRNCQP35ADV1KODV3UMH5J4LM';
+const FOURSQUARE_DATE_VERSION = '20170520';
+
 
 // Models initialization ( hardcoded data )
-
 const CITIES_LOCATIONS_DATA = [
     {
         id: 0,
@@ -329,6 +345,7 @@ const CITIES_LOCATIONS_DATA = [
     }
 ];
 
+// Defines a City according to the model above.
 var City = function( data ) {
     var self = this;
     self.id = data.id;
@@ -340,6 +357,7 @@ var City = function( data ) {
     );
 };
 
+// Defines a RestaurantInfo according to the model above.
 var RestaurantInfo = function( data ) {
     var self = this;
 
@@ -351,17 +369,21 @@ var RestaurantInfo = function( data ) {
     self.location = data.location;
 };
 
+// The ViewModel using KnockoutJS
 var CityViewModel = function( data, map ) {
     var self = this;
 
+    // List of cities according to the model
     self.cities = ko.observableArray(
         _.chain( data )
         .map( city => new City( city ) )
         .value()
     );
 
+    // The current city selected in the side bar
     self.currentCity = ko.observable( self.cities()[ 0 ] );
 
+    // The current restaurants, according to the city selected
     self.currentRestaurants = ko.observableArray(
         _.chain( self.currentCity().restaurants() )
         .map( restaurant => {
@@ -372,12 +394,17 @@ var CityViewModel = function( data, map ) {
         .value()
     );
 
+    // Filter the restaurant's list and pinpoints in the map
     self.filterRestaurants = function() {
+        // Get the value of the current filter in the input
         const query = $( '#filter' ).val();
+
         self.currentRestaurants(
+            // chain -> value to chain operations for the same data
             _.chain( self.currentCity().restaurants() )
             .map( restaurant => {
                 var toggled = false;
+                // Check if the restaurant name matches the filter, and set them to visible and toggled
                 if ( restaurant.name.toLowerCase().indexOf( query.toLowerCase() ) > -1 ) {
                     restaurant.toggled( true );
                     restaurant.showing( true );
@@ -394,6 +421,7 @@ var CityViewModel = function( data, map ) {
         showPinPoints();
     }
 
+    // For each city displayed in the view to be selected when clicked
     self.selectCity = function(city) {
         self.currentCity( city );
         self.currentRestaurants(
@@ -409,6 +437,7 @@ var CityViewModel = function( data, map ) {
         showPinPoints();
     }
 
+    // Set each restaurant to toggled if it's currently not toggled (selected)
     self.toggleRestaurant = function( restaurant ) {
         var toggled = false;
         if ( restaurant.toggled() ) {
@@ -418,6 +447,7 @@ var CityViewModel = function( data, map ) {
             toggled = true;
         }
 
+        // According to the current state of the restaurant, set the visibility of the pinpoint in the map
         setPinPointVisibility( restaurant.id, toggled );
 
         if ( toggled ) {
@@ -444,13 +474,9 @@ function initMap() {
 
 function main() {
     ko.applyBindings( new CityViewModel( CITIES_LOCATIONS_DATA, map ) );
+    // Get all the binds in KnockoutJS structure to reuse them in JS
     viewModel = ko.dataFor(document.body);
     showPinPoints();
-
-    yelp = new Yelp( {
-        consumer_key: 'CIz-tW_cOfKadJMveua1vw',
-        consumer_secret: 'urj1sBZtRqy0mITbuIOPUtQhED0FdSFDu5QaxAeQSr7dwjE2SHSHb9CuJt8cJK3n'
-    });
 }
 
 $( () => {
@@ -461,9 +487,11 @@ $( () => {
 
 } );
 
+// Show the pinpoints in the map according to the current restaurants in the ViewModel
 function showPinPoints() {
     clearPinPoints();
     _.each( viewModel.currentRestaurants(), restaurant => {
+        // Mount the current pinpoint
         var pinPoint = new google.maps.Marker( {
             position: restaurant.location,
             title: restaurant.name,
@@ -472,21 +500,26 @@ function showPinPoints() {
         } );
 
         pinPoints.push(pinPoint);
+        // Adds a listener to include the infowindow for the pinpoint, when clicked
         pinPoint.addListener( 'click', function() {
             populateInfoWindowWithLoader( this, infoWindow );
+            // Set the visibility of the map to center to this pinpoint
             map.panTo(pinPoint.getPosition());
+            // Animate the selected pinpoint
             toggleBounce(this);
-            showPhotosForPinPoint( pinPoint )
+            getInfoForPinPoint( restaurant, pinPoint )
         } );
 
     } );
     centralizeViewMap();
 }
 
+// Reset the filter to empty
 function resetFilter() {
     $( '#filter' ).val( '' );
 }
 
+// Set the pinpoint map to null and clear the list of pinpoints
 function clearPinPoints() {
     _.each(pinPoints, (pinPoint) => {
         pinPoint.setMap(null);
@@ -494,6 +527,7 @@ function clearPinPoints() {
     pinPoints = [];
 }
 
+// Calls the action to animate the pinpoint when the restaurant is selected in the View
 function animateToggledPinPoint( id ) {
     _.chain(pinPoints)
     .filter(( pinPoint ) => pinPoint.id === id)
@@ -503,6 +537,7 @@ function animateToggledPinPoint( id ) {
     .value();
 }
 
+// Set the pinpoint visibility (hidden or showing)
 function setPinPointVisibility( id, visible ) {
     _.chain(pinPoints)
     .filter(( pinPoint ) => pinPoint.id === id)
@@ -512,9 +547,11 @@ function setPinPointVisibility( id, visible ) {
     .value();
 }
 
+// Set the current infowindow to display a loading circle, while the request to Foursquare is done
 function populateInfoWindowWithLoader( pinPoint, infoWindow ) {
     if ( infoWindow.marker != pinPoint ) {
         infoWindow.marker = pinPoint;
+        // Includes a nice loader for each infowindow used in the project
         infoWindow.setContent("<div class='loader'></div");
         infoWindow.open(map, pinPoint);
 
@@ -526,18 +563,35 @@ function populateInfoWindowWithLoader( pinPoint, infoWindow ) {
     }
 }
 
-function populateInfoWindow(pinPoint, infoWindow, pictures) {
-    if ( infoWindow.marker != pinPoint ) {
-        infoWindow.marker = pinPoint;
-        infoWindow.setContent("<div>" + pinPoint.position + "</div");
-        infoWindow.open( map, pinPoint );
+// Populate the infowindow with information retrieved from Foursquare
+function populateInfoWindow( pinPoint, infoWindow, info ) {
+    var infoWindowContent = "<div class='row text-center'>";
 
-        infoWindow.addListener( 'closeclick', function() {
-            infoWindow.close();
-        });
+    if ( !info ) {
+        // The info is undefined if the request to Foursquare erroed.
+        infoWindowContent += "<div class='col-md-12 alert-danger'>Error while retrieving information from<span class='foursquare-logo'> Foursquare </span>API. Try again later.</div>";
     }
+    else if ( info && !info.general ) {
+        // The info is empty if no results were found using Foursquare API
+        infoWindowContent += "<div class='col-md-12'>No information found about this place.</div>";
+    } else {
+        // Information was retrieved, let's exhibit it
+        infoWindowContent += "<div class='col-md-12 restaurant-name'>" + info.general.name + "</div>";
+        infoWindowContent += "<div class='col-md-12'><span class='" + info.general.checkinsCountClass + "'>" + info.general.checkinsCount + "</span> checked-in ever here.</div>";
+        infoWindowContent += "<div class='col-md-12'><span class='" + info.general.tipCountClass + "'>" + info.general.tipCount + "</span> users wrote tips about this place.</div>";
+        infoWindowContent += "<div class='col-md-12'><span class='" + info.general.usersCountClass + "'>" + info.general.usersCount + "</span> Foursquare registered users ever checked-in here.</div>";
+        infoWindowContent += "</div>";
+    }
+    infoWindowContent += "</div>";
+
+    // Just to inform on each infowindow opened that Foursquare was used as the other third-part library
+    if ( info ) {
+        infoWindowContent += "<br><div class='row text-center'><div class='col-md-12 alert-info'>Information retrieved using<span class='foursquare-logo'> Foursquare </span>API.</div></div>";
+    }
+    infoWindow.setContent(infoWindowContent);
 }
 
+// Centralize the current view according to the pinpoints in the map
 function centralizeViewMap() {
     if ( !pinPoints.length ) {
         return;
@@ -547,9 +601,10 @@ function centralizeViewMap() {
         pinPoint.setMap( map );
         bounds.extend( pinPoint.position )
     } );
-    map.fitBounds(bounds);
+    map.fitBounds( bounds );
 }
 
+// Togggle (set selected or not) the elements in the side bar
 function toggleSideBarSelection( el ) {
     if ( el.hasClass( 'collapsed' ) ) {
         el.addClass( 'active ' );
@@ -558,6 +613,7 @@ function toggleSideBarSelection( el ) {
     }
 }
 
+// Bounce animation for the pinpoint when selected
 function toggleBounce( pinPoint ) {
     pinPoint.setAnimation( google.maps.Animation.BOUNCE );
     _.delay( function removeAnimation() {
@@ -565,9 +621,52 @@ function toggleBounce( pinPoint ) {
     }, 740 );
 }
 
-function showPhotosForPinPoint( pinPoint ) {
-    yelp.searchBusiness( {
-        latitude: pinPoint.position.lat(),
-        longitude: pinPoint.position.lng()
-    } ).then( ( results ) => console.log(results)) 
+// Get information asyncronously from Foursquare about the pinpoint selected
+function getInfoForPinPoint( restaurant, pinPoint ) {
+    if ( pinPointsInfo[ restaurant.id ] && !pinPointsInfo[ restaurant.id ].general ) {
+        // Get the information from the local cache variable, if exists
+        populateInfoWindow( pinPoint, infoWindow, pinPointsInfo[restaurant.id] );
+        return;
+    }
+    // Just do a regular async call to the API endpoint and show it after ends
+    $.ajax( {
+        url: 'https://api.foursquare.com/v2/venues/search',
+        data: {
+            'll': restaurant.location.lat + ',' + restaurant.location.lng,
+            'intent': 'match',
+            'query': restaurant.name,
+            'client_id': FOURSQUARE_CLIENT_ID,
+            'client_secret': FOURSQUARE_CLIENT_SECRET,
+            'v': FOURSQUARE_DATE_VERSION
+        },
+        type: 'GET',
+        success: ( data, status ) => {
+            if ( status === 'success' ) {
+                const venue = data.response.venues && data.response.venues[0];
+                var venueInfo = {};
+                if ( venue ) {
+                    venueInfo = {
+                        general: {
+                            name: venue.name,
+                            checkinsCount: venue.stats.checkinsCount,
+                            checkinsCountClass: venue.stats.checkinsCount > 500 ? 'checkins-count-huge' : venue.stats.checkinsCount > 200 ? 'checkins-count-medium' : 'checkins-count-small',
+                            tipCount: venue.stats.tipCount,
+                            tipCountClass: venue.stats.tipCount > 100 ? 'tip-count-huge' : venue.stats.tipCount > 50 ? 'tip-count-medium' : 'tip-count-small',
+                            usersCount: venue.stats.usersCount,
+                            usersCountClass: venue.stats.usersCount > 200 ? 'users-count-huge' : venue.stats.usersCount > 100 ? 'users-count-medium' : 'users-count-small'
+                        },
+                        site: venue.url
+                    };
+                    pinPointsInfo[restaurant.id] = venueInfo;
+                    populateInfoWindow( pinPoint, infoWindow, venueInfo );
+                } else {
+                    pinPointsInfo[restaurant.id] = venueInfo;
+                    populateInfoWindow( pinPoint, infoWindow, venueInfo );
+                }
+            }
+        },
+        error: function() {
+            populateInfoWindow( pinPoint, infoWindow, null );
+        }
+    } );
 }
