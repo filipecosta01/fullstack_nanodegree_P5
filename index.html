@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+    <title>Neighborhood Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <head>
+        <script type="text/javascript" src="./build/bundle.js" charset="utf-8"></script>
+        <script async defer
+            src="https://maps.googleapis.com/maps/api/js?v=3&key=AIzaSyAuNKM-vGHA88j-BwrdLyNzaMvbGe4p1K8&callback=initMap">
+        </script>
+        <meta charset="utf-8">
+    </head>
+
+<body>
+    <div class="nav-side-menu">
+        <div class="brand">Top 5 Restaurants</div>
+        <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
+        <div class="menu-list">
+            <ul id="menu-content" class="menu-content collapse out">
+                <li data-toggle="collapse" data-target="#cities" id="cities-container" class="collapsed">
+                    <a href="#">
+                        <i class="fa fa-globe fa-lg"></i>
+                        Pick a City
+                        <span class="arrow"></span>
+                    </a>
+                </li>
+                <ul class="sub-menu collapse" id="cities" data-bind="foreach: cities" >
+                    <li data-bind="click: $parent.selectCity, css: { active: id === $parent.currentCity().id }"><a data-bind="text: name, attr: { id: id }"></a></li>
+                </ul>
+
+                <li data-toggle="collapse" data-target="#locations" class="collapsed">
+                    <a href="#"><i class="fa fa-map-marker fa-lg"></i> Filter Restaurants <span class="arrow"></span></a>
+                </li>
+                <ul class="sub-menu collapse" id="locations">
+                    <li class="no-indicator">
+                        <form data-bind="submit: filterRestaurants">
+                            <div class="input-group add-on">
+                                <input type="text" class="form-control" id="filter" placeholder="Filter restaurants">
+                                <div class="input-group-btn">
+                                    <button type="submit" class="btn btn-default">
+                                        <i class="glyphicon glyphicon-filter"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </li>
+                    <!-- ko foreach: currentCity().restaurants -->
+                    <li data-bind="visible: showing, click: $parent.toggleRestaurant, css: { active: toggled }"><a data-bind="text: name, attr: { id: id }"></a></li>
+                    <!-- /ko -->
+                </ul>
+                <li data-toggle="collapse" data-target="#about-and-info" class="collapsed">
+                    <a href="#"><i class="fa fa-info-circle fa-lg"></i> About  <span class="arrow"></span></a>
+                </li>
+                <ul class="sub-menu collapse text-center" id="about-and-info">
+                    <li class="no-indicator">Author: Filipe Costa</li>
+                    <li class="no-indicator">Contact: s.costa.filipe@gmail.com</li>
+                    <li class="no-indicator">Google API: <a target='_blank' href='https://developers.google.com/maps/'>Maps</a></li>
+                    <li class="no-indicator">Marker Info: <a target='_blank' href='https://developer.foursquare.com/'>Foursquare</a></li>
+                </ul>
+            </ul>
+        </div>
+    </div>
+    <div class="container" id="main">
+      <div class="row">
+          <div class="col-md-12 map-container">
+              <div id="map"></div>
+          </div>
+      </div>
+    </div>
+</body>
+</html>
