@@ -6,7 +6,7 @@ As part of the project, is required to load a map and show some locations on it,
 
 For this specific project, the implementation is:
 Show a list of cities in Europe and for each city, list the best 5 restaurants according to a previous search on Yelp (best rated).
-Then, with some hardcoded data, display the cities chosen and the best 5 restaurants, display in the map their location and some information about how many people were there before and how many people evaluated that restaurant (for populatiry).
+Then, with some hardcoded data, display the cities chosen and the best 5 restaurants, display in the map their location and some information about how many people were there before and how many people evaluated that restaurant (for popularity).
 
 ## Libraries
 The important libraries used by this project are:
